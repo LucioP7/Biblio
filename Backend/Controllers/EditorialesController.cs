@@ -1,17 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Backend.DataContext;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Backend.DataContext;
 using Service.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class EditorialesController : ControllerBase
     {
         private readonly BiblioContext _context;
@@ -25,14 +27,16 @@ namespace Backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Editorial>>> GetEditoriales([FromQuery] string filtro = "")
         {
-            return await _context.Editoriales.AsNoTracking().Where(e=>e.Nombre.Contains(filtro)).ToListAsync();
+            return await _context.Editoriales.AsNoTracking().Where(e => e.Nombre.Contains(filtro)).ToListAsync();
         }
 
-        // GET: api/Editoriales/deleteds
         [HttpGet("deleteds")]
         public async Task<ActionResult<IEnumerable<Editorial>>> GetDeletedsEditoriales()
         {
-            return await _context.Editoriales.AsNoTracking().IgnoreQueryFilters().Where(e => e.IsDeleted).ToListAsync();
+            return await _context.Editoriales
+                .AsNoTracking()
+                .IgnoreQueryFilters()
+                .Where(a => a.IsDeleted).ToListAsync();
         }
 
         // GET: api/Editoriales/5
@@ -100,28 +104,29 @@ namespace Backend.Controllers
             {
                 return NotFound();
             }
-
             editorial.IsDeleted = true;
+            //Impacta en memoria
             _context.Editoriales.Update(editorial);
+            //Aca recien impacta en la base de datos
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
         [HttpPut("restore/{id}")]
         public async Task<IActionResult> RestoreEditorial(int id)
         {
-            var editorial = await _context.Editoriales.IgnoreQueryFilters().FirstOrDefaultAsync(a => a.Id.Equals(id));
+            var editorial = await _context.Editoriales.IgnoreQueryFilters().FirstOrDefaultAsync(e => e.Id.Equals(id));
             if (editorial == null)
             {
                 return NotFound();
             }
             editorial.IsDeleted = false;
+            //Impacta en memoria
             _context.Editoriales.Update(editorial);
+            //Aca recien impacta en la base de datos
             await _context.SaveChangesAsync();
             return NoContent();
         }
-
         private bool EditorialExists(int id)
         {
             return _context.Editoriales.Any(e => e.Id == id);

@@ -1,16 +1,19 @@
-﻿using System;
+﻿using Backend.DataContext;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Service.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Backend.DataContext;
-using Service.Models;
 
 namespace Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UsuariosController : ControllerBase
     {
         private readonly BiblioContext _context;
@@ -21,44 +24,26 @@ namespace Backend.Controllers
         }
 
         // GET: api/Usuarios
-        // filtro: busca en Nombre, Email o Dni
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuarios([FromQuery] string filtro = "")
         {
-            var query = _context.Usuarios
-                                .AsNoTracking()
-                                .AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(filtro))
-            {
-                query = query.Where(u =>
-                    u.Nombre.Contains(filtro) ||
-                    u.Email.Contains(filtro) ||
-                    u.Dni.Contains(filtro)
-                );
-            }
-
-            return await query.ToListAsync();
+            return await _context.Usuarios.AsNoTracking().Where(u => u.Nombre.Contains(filtro)).ToListAsync();
         }
 
-        // GET: api/Usuarios/deleteds
         [HttpGet("deleteds")]
         public async Task<ActionResult<IEnumerable<Usuario>>> GetDeletedsUsuarios()
         {
             return await _context.Usuarios
-                                 .AsNoTracking()
-                                 .IgnoreQueryFilters()
-                                 .Where(u => u.IsDeleted)
-                                 .ToListAsync();
+                .AsNoTracking()
+                .IgnoreQueryFilters()
+                .Where(a => a.IsDeleted).ToListAsync();
         }
 
         // GET: api/Usuarios/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Usuario>> GetUsuario(int id)
         {
-            var usuario = await _context.Usuarios
-                                        .AsNoTracking()
-                                        .FirstOrDefaultAsync(u => u.Id == id);
+            var usuario = await _context.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.Id.Equals(id));
 
             if (usuario == null)
             {
@@ -69,6 +54,7 @@ namespace Backend.Controllers
         }
 
         // PUT: api/Usuarios/5
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUsuario(int id, Usuario usuario)
         {
@@ -99,20 +85,17 @@ namespace Backend.Controllers
         }
 
         // POST: api/Usuarios
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Usuario>> PostUsuario(Usuario usuario)
         {
             _context.Usuarios.Add(usuario);
             await _context.SaveChangesAsync();
 
-            var creado = await _context.Usuarios
-                                       .AsNoTracking()
-                                       .FirstOrDefaultAsync(u => u.Id == usuario.Id);
-
-            return CreatedAtAction(nameof(GetUsuario), new { id = usuario.Id }, creado);
+            return CreatedAtAction("GetUsuario", new { id = usuario.Id }, usuario);
         }
 
-        // DELETE: api/Usuarios/5 (Soft Delete)
+        // DELETE: api/Usuarios/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUsuario(int id)
         {
@@ -121,7 +104,6 @@ namespace Backend.Controllers
             {
                 return NotFound();
             }
-
             usuario.IsDeleted = true;
             _context.Usuarios.Update(usuario);
             await _context.SaveChangesAsync();
@@ -129,26 +111,21 @@ namespace Backend.Controllers
             return NoContent();
         }
 
-        // PUT: api/Usuarios/restore/5
         [HttpPut("restore/{id}")]
         public async Task<IActionResult> RestoreUsuario(int id)
         {
-            var usuario = await _context.Usuarios
-                                        .IgnoreQueryFilters()
-                                        .FirstOrDefaultAsync(u => u.Id == id);
-
+            var usuario = await _context.Usuarios.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id.Equals(id));
             if (usuario == null)
             {
                 return NotFound();
             }
-
             usuario.IsDeleted = false;
+            //Impacta en memoria
             _context.Usuarios.Update(usuario);
+            //Aca recien impacta en la base de datos
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
-
         private bool UsuarioExists(int id)
         {
             return _context.Usuarios.Any(e => e.Id == id);

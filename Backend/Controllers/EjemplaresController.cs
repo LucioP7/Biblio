@@ -1,18 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Backend.DataContext;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Backend.DataContext;
-using Service.Models;
 using Service.ExtentionMethods;
+using Service.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class EjemplaresController : ControllerBase
     {
         private readonly BiblioContext _context;
@@ -28,19 +30,24 @@ namespace Backend.Controllers
         {
             return await _context.Ejemplares
                 .AsNoTracking()
-                .Include(e => e.Libro) // attachar el modelo relacionado
-                .Where(e => string.IsNullOrEmpty(filtro) || e.Libro!.Titulo.Contains(filtro))
+                .Where(ej => ej.Libro != null && ej.Libro.Titulo.Contains(filtro)) //Nulos
                 .ToListAsync();
+        }
+
+        [HttpGet("deleteds")]
+        public async Task<ActionResult<IEnumerable<Ejemplar>>> GetDeletedsEjemplares()
+        {
+            return await _context.Ejemplares
+                .AsNoTracking()
+                .IgnoreQueryFilters()
+                .Where(a => a.IsDeleted).ToListAsync();
         }
 
         // GET: api/Ejemplares/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Ejemplar>> GetEjemplar(int id)
         {
-            var ejemplar = await _context.Ejemplares
-                .AsNoTracking()
-                .Include(e => e.Libro) // incluimos el libro
-                .FirstOrDefaultAsync(e => e.Id.Equals(id));
+            var ejemplar = await _context.Ejemplares.AsNoTracking().FirstOrDefaultAsync(ej => ej.Id.Equals(id));
 
             if (ejemplar == null)
             {
@@ -94,7 +101,7 @@ namespace Backend.Controllers
             return CreatedAtAction("GetEjemplar", new { id = ejemplar.Id }, ejemplar);
         }
 
-        // DELETE lógico: api/Ejemplares/5
+        // DELETE: api/Ejemplares/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEjemplar(int id)
         {
@@ -103,34 +110,30 @@ namespace Backend.Controllers
             {
                 return NotFound();
             }
-
             ejemplar.IsDeleted = true;
+            //Impacta en memoria
             _context.Ejemplares.Update(ejemplar);
+            //Aca recien impacta en la base de datos
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
-        // PUT: api/Ejemplares/restore/5
         [HttpPut("restore/{id}")]
         public async Task<IActionResult> RestoreEjemplar(int id)
         {
-            var ejemplar = await _context.Ejemplares
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.Id == id);
-
+            var ejemplar = await _context.Ejemplares.IgnoreQueryFilters().FirstOrDefaultAsync(ej => ej.Id.Equals(id));
             if (ejemplar == null)
             {
                 return NotFound();
             }
-
             ejemplar.IsDeleted = false;
+            //Impacta en memoria
             _context.Ejemplares.Update(ejemplar);
+            //Aca recien impacta en la base de datos
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
-
         private bool EjemplarExists(int id)
         {
             return _context.Ejemplares.Any(e => e.Id == id);

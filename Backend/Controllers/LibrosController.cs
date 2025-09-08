@@ -8,11 +8,13 @@ using Microsoft.EntityFrameworkCore;
 using Backend.DataContext;
 using Service.Models;
 using Service.ExtentionMethods;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class LibrosController : ControllerBase
     {
         private readonly BiblioContext _context;
@@ -26,33 +28,23 @@ namespace Backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Libro>>> GetLibros([FromQuery] string filtro = "")
         {
-            return await _context.Libros
-                .AsNoTracking()
-                .Include(l => l.Editorial)
-                .Where(l => l.Titulo.Contains(filtro))
-                .ToListAsync();
+            return await _context.Libros.AsNoTracking().Where(l => l.Titulo.Contains(filtro)).ToListAsync();
         }
 
-        // GET: api/Libros/deleteds
         [HttpGet("deleteds")]
         public async Task<ActionResult<IEnumerable<Libro>>> GetDeletedsLibros()
         {
             return await _context.Libros
                 .AsNoTracking()
                 .IgnoreQueryFilters()
-                .Include(l => l.Editorial)
-                .Where(l => l.IsDeleted)
-                .ToListAsync();
+                .Where(a => a.IsDeleted).ToListAsync();
         }
 
         // GET: api/Libros/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Libro>> GetLibro(int id)
         {
-            var libro = await _context.Libros
-                .AsNoTracking()
-                .Include(l => l.Editorial)
-                .FirstOrDefaultAsync(l => l.Id.Equals(id));
+            var libro = await _context.Libros.AsNoTracking().FirstOrDefaultAsync(a => a.Id.Equals(id));
 
             if (libro == null)
             {
@@ -63,6 +55,7 @@ namespace Backend.Controllers
         }
 
         // PUT: api/Libros/5
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutLibro(int id, Libro libro)
         {
@@ -94,6 +87,7 @@ namespace Backend.Controllers
         }
 
         // POST: api/Libros
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Libro>> PostLibro(Libro libro)
         {
@@ -104,7 +98,7 @@ namespace Backend.Controllers
             return CreatedAtAction("GetLibro", new { id = libro.Id }, libro);
         }
 
-        // DELETE: api/Libros/5 (Soft Delete)
+        // DELETE: api/Libros/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteLibro(int id)
         {
@@ -113,7 +107,6 @@ namespace Backend.Controllers
             {
                 return NotFound();
             }
-
             libro.IsDeleted = true;
             _context.Libros.Update(libro);
             await _context.SaveChangesAsync();
@@ -121,26 +114,21 @@ namespace Backend.Controllers
             return NoContent();
         }
 
-        // PUT: api/Libros/restore/5
         [HttpPut("restore/{id}")]
         public async Task<IActionResult> RestoreLibro(int id)
         {
-            var libro = await _context.Libros
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(l => l.Id.Equals(id));
-
+            var libro = await _context.Libros.IgnoreQueryFilters().FirstOrDefaultAsync(l => l.Id.Equals(id));
             if (libro == null)
             {
                 return NotFound();
             }
-
             libro.IsDeleted = false;
+            //Impacta en memoria
             _context.Libros.Update(libro);
+            //Aca recien impacta en la base de datos
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
-
         private bool LibroExists(int id)
         {
             return _context.Libros.Any(e => e.Id == id);

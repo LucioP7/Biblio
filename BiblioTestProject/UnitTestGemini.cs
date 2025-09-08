@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Configuration;
-using Service.Interfaces;
+using Service.Models;
 using Service.Services;
 using System.Text;
 using System.Text.Json;
@@ -11,33 +11,30 @@ namespace BiblioTestProject
         [Fact]
         public async Task TestObtenerResumenLibroIA()
         {
-            // Cargar configuración desde appsettings.json
+            await LoginTest();
+            //leemos la api key desde appsettings.json
             var configuration = new ConfigurationBuilder()
-                                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                                .AddEnvironmentVariables()
-                                .Build();
-            //var configuration = new ConfigurationBuilder()
-            //                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            //                    .AddEnvironmentVariables()
-            //                    .Build();
+                  .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                  .AddEnvironmentVariables()
+                  .Build();
 
-            var apiKey = configuration["ApikeyGemini"]; 
-            var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
+            var apiKey = configuration["ApiKeyGemini"];
+            var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key= " + apiKey;
 
-            var prompt = $"Me puedes dar un resumen de 10 palabras como máximo del principito";
+            var prompt = $"2 chistes";
 
             var payload = new
             {
                 contents = new[]
                 {
-                new
-                {
-                    parts = new[]
+                    new
                     {
-                        new { text = prompt }
+                        parts = new[]
+                        {
+                            new { text = prompt }
+                        }
                     }
                 }
-            }
             };
 
             var json = JsonSerializer.Serialize(payload);
@@ -56,21 +53,42 @@ namespace BiblioTestProject
 
             Console.WriteLine($"Respuesta de IA: {texto}");
             Assert.True(response.IsSuccessStatusCode);
-
         }
-        [Fact]
-        public async Task TestObtenerPromptGeminiService()
+
+        private async Task LoginTest()
         {
+            var config = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json")
+                .AddEnvironmentVariables()
+                .Build();
+
+            Console.WriteLine($"Leyendo configuración...: {config}");
+            var serviceAuth = new AuthService(config);
+            Console.WriteLine($"Iniciando login...: {serviceAuth}");
+            var token = await serviceAuth.Login(new Login
+            {
+                Username = "pianettilucio@gmail.com",
+                Password = "12345678"
+            });
+            Console.WriteLine($"Token obtenido: {token}");
+            GeminiService.jwtToken = token;
+        }
+
+        [Fact]
+        public async Task TestServicioGemini()
+        {
+            await LoginTest();
             //leemos la api key desde appsettings.json
             var configuration = new ConfigurationBuilder()
                   .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                   .AddEnvironmentVariables()
                   .Build();
-            var prompt = $"Dame un chiste";
+            var prompt = $"cuentame un chiste";
             var servicio = new GeminiService(configuration);
             var resultado = await servicio.GetPrompt(prompt);
             Console.WriteLine($"Respuesta de IA desde servicio: {resultado}");
             Assert.NotNull(resultado);
         }
+
     }
 }

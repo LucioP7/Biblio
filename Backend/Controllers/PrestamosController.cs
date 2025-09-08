@@ -1,18 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Backend.DataContext;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Backend.DataContext;
-using Service.Models;
 using Service.ExtentionMethods;
+using Service.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class PrestamosController : ControllerBase
     {
         private readonly BiblioContext _context;
@@ -22,51 +24,31 @@ namespace Backend.Controllers
             _context = context;
         }
 
+        // GET: api/Prestamos
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Prestamo>>> GetPrestamos([FromQuery] string filtro = "")
         {
-            var query = _context.Prestamos
+            return await _context.Prestamos
                 .Include(p => p.Usuario)
-                .Include(p => p.Ejemplar)
-                    .ThenInclude(e => e.Libro)
-                .AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(filtro))
-            {
-                query = query.Where(p =>
-                    (p.Usuario != null && p.Usuario.Nombre.Contains(filtro)) ||
-                    (p.Usuario != null && p.Usuario.Dni.Contains(filtro)) ||
-                    (p.Ejemplar != null && p.Ejemplar.Libro != null && p.Ejemplar.Libro.Titulo.Contains(filtro))
-                );
-            }
-
-            return await query.AsNoTracking().ToListAsync();
+                .AsNoTracking()
+                .Where(p => p.Usuario.Nombre.ToUpper().Contains(filtro.ToUpper()))
+                .ToListAsync();
         }
 
-        // GET: api/Prestamos/deleteds
         [HttpGet("deleteds")]
-        public async Task<ActionResult<IEnumerable<Prestamo>>> GetDeletedsPrestamos()
+        public async Task<ActionResult<IEnumerable<Prestamo>>> GetDeletedsAutores()
         {
             return await _context.Prestamos
                 .AsNoTracking()
                 .IgnoreQueryFilters()
-                .Include(p => p.Usuario)
-                .Include(p => p.Ejemplar)
-                    .ThenInclude(e => e.Libro)
-                .Where(p => p.IsDeleted)
-                .ToListAsync();
+                .Where(a => a.IsDeleted).ToListAsync();
         }
 
         // GET: api/Prestamos/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Prestamo>> GetPrestamo(int id)
         {
-            var prestamo = await _context.Prestamos
-                .AsNoTracking()
-                .Include(p => p.Usuario)
-                .Include(p => p.Ejemplar)
-                    .ThenInclude(e => e.Libro)
-                .FirstOrDefaultAsync(p => p.Id == id);
+            var prestamo = await _context.Prestamos.AsNoTracking().FirstOrDefaultAsync(p => p.Id.Equals(id));
 
             if (prestamo == null)
             {
@@ -77,12 +59,13 @@ namespace Backend.Controllers
         }
 
         // PUT: api/Prestamos/5
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutPrestamo(int id, Prestamo prestamo)
         {
             _context.TryAttach(prestamo?.Usuario);
-            _context.TryAttach(prestamo?.Ejemplar);
             _context.TryAttach(prestamo?.Ejemplar?.Libro);
+            _context.TryAttach(prestamo?.Ejemplar);
             if (id != prestamo.Id)
             {
                 return BadRequest();
@@ -110,26 +93,20 @@ namespace Backend.Controllers
         }
 
         // POST: api/Prestamos
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Prestamo>> PostPrestamo(Prestamo prestamo)
         {
             _context.TryAttach(prestamo?.Usuario);
-            _context.TryAttach(prestamo?.Ejemplar);
             _context.TryAttach(prestamo?.Ejemplar?.Libro);
+            _context.TryAttach(prestamo?.Ejemplar);
             _context.Prestamos.Add(prestamo);
             await _context.SaveChangesAsync();
 
-            var creado = await _context.Prestamos
-                .AsNoTracking()
-                .Include(p => p.Usuario)
-                .Include(p => p.Ejemplar)
-                    .ThenInclude(e => e.Libro)
-                .FirstOrDefaultAsync(p => p.Id == prestamo.Id);
-
-            return CreatedAtAction(nameof(GetPrestamo), new { id = prestamo.Id }, creado);
+            return CreatedAtAction("GetPrestamo", new { id = prestamo.Id }, prestamo);
         }
 
-        // DELETE: api/Prestamos/5 (Soft Delete)
+        // DELETE: api/Prestamos/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePrestamo(int id)
         {
@@ -138,7 +115,6 @@ namespace Backend.Controllers
             {
                 return NotFound();
             }
-
             prestamo.IsDeleted = true;
             _context.Prestamos.Update(prestamo);
             await _context.SaveChangesAsync();
@@ -146,26 +122,21 @@ namespace Backend.Controllers
             return NoContent();
         }
 
-        // PUT: api/Prestamos/restore/5
         [HttpPut("restore/{id}")]
         public async Task<IActionResult> RestorePrestamo(int id)
         {
-            var prestamo = await _context.Prestamos
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(p => p.Id == id);
-
+            var prestamo = await _context.Prestamos.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id.Equals(id));
             if (prestamo == null)
             {
                 return NotFound();
             }
-
             prestamo.IsDeleted = false;
+            //Impacta en memoria
             _context.Prestamos.Update(prestamo);
+            //Aca recien impacta en la base de datos
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
-
         private bool PrestamoExists(int id)
         {
             return _context.Prestamos.Any(e => e.Id == id);
