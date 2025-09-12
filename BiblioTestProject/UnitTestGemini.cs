@@ -63,7 +63,7 @@ namespace BiblioTestProject
                 .Build();
 
             Console.WriteLine($"Leyendo configuración...: {config}");
-            var serviceAuth = new AuthService(config);
+            var serviceAuth = new AuthService();
             Console.WriteLine($"Iniciando login...: {serviceAuth}");
             var token = await serviceAuth.Login(new Login
             {

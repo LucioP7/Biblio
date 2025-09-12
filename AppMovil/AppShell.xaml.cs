@@ -1,4 +1,5 @@
 ﻿using AppMovil.ViewModels;
+using Service.Models;
 
 namespace AppMovil
 {
@@ -15,6 +16,11 @@ namespace AppMovil
         public void SetLoginState(bool isLoggedIn)
         {
             ViewModel.SetLoginState(isLoggedIn);
+        }
+
+        public void SetUserLogin(Usuario usuario)
+        { 
+            ViewModel.SetUserLogin(usuario);
         }
     }
 }

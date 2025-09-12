@@ -33,7 +33,7 @@ namespace BiblioTestProject
                 .AddEnvironmentVariables()
                 .Build();
 
-            var serviceAuth = new AuthService(config);
+            var serviceAuth = new AuthService();
             var token = await serviceAuth.Login(new Login
             {
                 Username = "pianettilucio@gmail.com",

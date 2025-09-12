@@ -4,6 +4,7 @@ using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Controls;
+using Service.Models;
 
 namespace AppMovil.ViewModels
 {
@@ -15,6 +16,8 @@ namespace AppMovil.ViewModels
         private bool loginVisible = true;
         [ObservableProperty]
         private bool menuVisible = false;
+
+        public Usuario? Usuario { get; private set; }
 
         partial void OnIsLoggedInChanged(bool value)
         {
@@ -36,6 +39,11 @@ namespace AppMovil.ViewModels
                 Shell.Current.GoToAsync("//MainPage");  // Cambio a MainPage (pantalla de inicio)
             else
                 Shell.Current.GoToAsync("//LoginPage");
+        }
+
+        public void SetUserLogin(Usuario usuario)
+        {
+            Usuario = usuario;
         }
 
         private void OnLogout()

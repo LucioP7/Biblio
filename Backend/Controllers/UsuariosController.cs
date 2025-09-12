@@ -53,6 +53,24 @@ namespace Backend.Controllers
             return usuario;
         }
 
+        // GET: api/Usuarios/5
+        [HttpGet("byemail")]
+        public async Task<ActionResult<Usuario>> GetByEmailUsuario([FromQuery] string? email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest("El parámetro email es obligatorio.");
+            }
+            var usuario = await _context.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.Email.Equals(email));
+
+            if (usuario == null)
+            {
+                return NotFound();
+            }
+
+            return usuario;
+        }
+
         // PUT: api/Usuarios/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]

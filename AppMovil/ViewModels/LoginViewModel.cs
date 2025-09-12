@@ -4,11 +4,16 @@ using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Controls;
+using Service.Models;
+using Service.Services;
 
 namespace AppMovil.ViewModels
 {
     public partial class LoginViewModel : ObservableObject
     {
+        AuthService authService = new AuthService();
+        UsuarioService _usuarioService = new UsuarioService();
+
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
         private string username = string.Empty;
@@ -49,8 +54,24 @@ namespace AppMovil.ViewModels
                 IsBusy = true;
                 ErrorMessage = string.Empty;
 
-                // Simulación de carga (opcional, puedes reducir o quitar)
-                await Task.Delay(500);
+                var response = await authService.Login(new Login
+                {
+                    Username = this.Username,
+                    Password = this.Password
+                });
+
+                if(string.IsNullOrEmpty(response))
+                {
+                    ErrorMessage = "Usuario o contraseña incorrectos.";
+                    return;
+                }
+
+                var usuario = await _usuarioService.GetByEmailAsync(Username);
+                if (usuario == null)
+                { 
+                    ErrorMessage ="No se pudo obtener la información del usuario.";
+                    return;
+                }
 
                 // PERMITE CUALQUIER USUARIO/CONTRASEÑA durante desarrollo
                 // Solo requiere que no estén vacíos

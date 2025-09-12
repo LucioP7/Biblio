@@ -13,10 +13,8 @@ namespace Service.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly IConfiguration _configuration;
-        public AuthService(IConfiguration configuration)
+        public AuthService()
         {
-            _configuration = configuration;
         }
         public async Task<string?> Login(Login? login)
         {
@@ -26,7 +24,7 @@ namespace Service.Services
             }
             try
             {
-                var UrlApi = _configuration["UrlApi"];
+                var UrlApi = Properties.Resources.UrlApi;
                 var endpointAuth = ApiEndpoints.GetEndpoint("Login");
                 var client = new HttpClient();
                 var response = await client.PostAsJsonAsync($"{UrlApi}{endpointAuth}/login/", login);
