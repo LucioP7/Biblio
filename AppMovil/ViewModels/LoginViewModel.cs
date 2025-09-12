@@ -1,18 +1,19 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Controls;
+using Service.Interfaces;
 using Service.Models;
 using Service.Services;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
 
 namespace AppMovil.ViewModels
 {
     public partial class LoginViewModel : ObservableObject
     {
-        AuthService authService = new AuthService();
-        UsuarioService _usuarioService = new UsuarioService();
+        AuthService _authService;
+        private UsuarioService? _usuarioService; // Declarado aquí
 
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
@@ -35,6 +36,8 @@ namespace AppMovil.ViewModels
 
         public LoginViewModel()
         {
+            _authService = new AuthService();
+            _usuarioService = new UsuarioService();
             LoginCommand = new RelayCommand(OnLogin, CanLogin);
         }
 
@@ -54,17 +57,28 @@ namespace AppMovil.ViewModels
                 IsBusy = true;
                 ErrorMessage = string.Empty;
 
-                var response = await authService.Login(new Login
+                var token = await _authService.Login(new Login
                 {
                     Username = this.Username,
                     Password = this.Password
                 });
 
-                if(string.IsNullOrEmpty(response))
+
+                if(string.IsNullOrEmpty(token))
                 {
                     ErrorMessage = "Usuario o contraseña incorrectos.";
                     return;
                 }
+
+                Console.WriteLine($"ESTE ES EL TOKEN: {token}");
+
+                //token = token.Trim().Trim('"');
+
+                // Asignar token global antes de crear servicios genéricos
+                GenericService<object>.jwtToken = token;
+
+                // Instanciar ahora el servicio (el ctor base ya configurará Authorization)
+                //_usuarioService = new UsuarioService();
 
                 var usuario = await _usuarioService.GetByEmailAsync(Username);
                 if (usuario == null)

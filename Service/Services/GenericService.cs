@@ -23,14 +23,23 @@ namespace Service.Services
             _httpClient = httpClient ?? new HttpClient();
             _options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             _endpoint = Properties.Resources.UrlApi + ApiEndpoints.GetEndpoint(typeof(T).Name);
-
-            if (!string.IsNullOrEmpty(GenericService<object>.jwtToken))
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GenericService<object>.jwtToken);
-            else
-                throw new ArgumentException("Token no definido.", nameof(GenericService<object>.jwtToken));
         }
+
+        protected void SetAuthorizationHeader()
+        {
+            if (!string.IsNullOrEmpty(GenericService<object>.jwtToken))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GenericService<object>.jwtToken);
+            }
+            else
+            {
+                throw new ArgumentException("Token no definido.", nameof(GenericService<object>.jwtToken));
+            }
+        }
+
         public async Task<T?> AddAsync(T? entity)
         {
+            SetAuthorizationHeader();
             var response = await _httpClient.PostAsJsonAsync(_endpoint, entity);
             var content = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
@@ -42,6 +51,7 @@ namespace Service.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
+            SetAuthorizationHeader();
             var response = await _httpClient.DeleteAsync($"{_endpoint}/{id}");
             if (!response.IsSuccessStatusCode)
             {
@@ -52,6 +62,7 @@ namespace Service.Services
 
         public async Task<List<T>?> GetAllAsync(string? filtro = "")
         {
+            SetAuthorizationHeader();
             var response = await _httpClient.GetAsync($"{_endpoint}?filtro={filtro}");
             if (response.IsSuccessStatusCode)
             {
@@ -66,6 +77,7 @@ namespace Service.Services
 
         public async Task<List<T>?> GetAllDeletedsAsync()
         {
+            SetAuthorizationHeader();
             var response = await _httpClient.GetAsync($"{_endpoint}/deleteds");
             var content = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
@@ -77,6 +89,7 @@ namespace Service.Services
 
         public async Task<T?> GetByIdAsync(int id)
         {
+            SetAuthorizationHeader();
             var response = await _httpClient.GetAsync($"{_endpoint}/{id}");
             var content = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
@@ -88,6 +101,7 @@ namespace Service.Services
 
         public async Task<bool> RestoreAsync(int id)
         {
+            SetAuthorizationHeader();
             var response = await _httpClient.PutAsync($"{_endpoint}/restore/{id}", null);
             if (!response.IsSuccessStatusCode)
             {
@@ -98,6 +112,7 @@ namespace Service.Services
 
         public async Task<bool> UpdateAsync(T? entity)
         {
+            SetAuthorizationHeader();
             var idValue = entity.GetType().GetProperty("Id").GetValue(entity);
             var response = await _httpClient.PutAsJsonAsync($"{_endpoint}/{idValue}", entity);
             if (!response.IsSuccessStatusCode)
