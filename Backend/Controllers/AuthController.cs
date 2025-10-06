@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Service.DTOs;
+using Service.Models;
 using System.Net.Http.Headers;
+using System.Threading.Tasks;
 
 namespace Backend.Controllers
 {
@@ -15,23 +17,22 @@ namespace Backend.Controllers
         FirebaseAuthClient firebaseAuthClient;
         IConfiguration _configuration;
         FirebaseAuthConfig _config;
-
         public AuthController(IConfiguration configuration)
         {
             _configuration = configuration;
-            SetFirebaseConfig();
+            SettingFirebase();
         }
-
-        private void SetFirebaseConfig()
+        private void SettingFirebase()
         {
-            // Configuración de Firebase con proveedor de autenticación por correo electrónico y anónimo
             _config = new FirebaseAuthConfig
             {
+
                 ApiKey = _configuration["ApiKeyFirebase"],
                 AuthDomain = _configuration["AuthDomainFirebase"],
                 Providers = new FirebaseAuthProvider[]
                 {
                     new EmailProvider()
+
                 },
             };
 
@@ -43,18 +44,16 @@ namespace Backend.Controllers
         {
             try
             {
-                var credentials = await firebaseAuthClient.SignInWithEmailAndPasswordAsync
-                    (login.Username, login.Password);
-                if(credentials.User.Info.IsEmailVerified == false)
+                var credential = await firebaseAuthClient.SignInWithEmailAndPasswordAsync(login.Username, login.Password);
+                if (credential.User.Info.IsEmailVerified == false)
                 {
-                    
-                    return BadRequest("Email no verificado. Verifica tu correo antes de iniciar sesion." );
+                    return BadRequest("Email no verificado. Verifica tu correo antes de Iniciar Sesion.");
                 }
-                return Ok(credentials.User.GetIdTokenAsync().Result);
+                return Ok(credential.User.GetIdTokenAsync().Result);
             }
             catch (FirebaseAuthException ex)
             {
-                return BadRequest(ex.Reason.ToString() );
+                return BadRequest(new { message = ex.Reason.ToString() });
             }
         }
 
@@ -73,7 +72,7 @@ namespace Backend.Controllers
             }
         }
 
-        //[Authorize]
+
         [HttpPost("resetpassword")]
         public async Task<IActionResult> ResetPassword([FromBody] LoginDTO login)
         {
@@ -90,15 +89,18 @@ namespace Backend.Controllers
 
         private async Task SendVerificationEmailAsync(string idToken)
         {
-            var RequestUri = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=" + _config.ApiKey;
             using (var client = new HttpClient())
             {
+                var RequestUri = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=" + _config.ApiKey;
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
                 var content = new StringContent("{\"requestType\":\"VERIFY_EMAIL\",\"idToken\":\"" + idToken + "\"}");
                 content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
                 var response = await client.PostAsync(RequestUri, content);
                 response.EnsureSuccessStatusCode();
             }
         }
+
     }
 }
